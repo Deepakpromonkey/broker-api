@@ -34,6 +34,17 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($user) {
+            if (empty($user->name)) {
+                $user->name = trim($user->first_name . ' ' . $user->last_name);
+            }
+        });
+    }
+
     public function company()
     {
         return $this->belongsTo(Company::class);

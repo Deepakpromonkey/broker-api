@@ -81,4 +81,10 @@ class Shipment extends Model
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
+
+    public function stops()
+    {
+        return $this->hasMany(ShipmentStop::class)->orderBy('stop_number');
+    }
+    
 }

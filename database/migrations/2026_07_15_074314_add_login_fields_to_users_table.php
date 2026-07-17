@@ -12,10 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
+            
+            $table->string('status')->default('active');
 
             $table->boolean('two_factor_enabled')
-                ->default(true)
-                ->after('status');
+                ->default(true);
 
             $table->timestamp('last_login_at')
                 ->nullable()
@@ -38,7 +39,13 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            //
+            $table->dropColumn([
+                'status',
+                'two_factor_enabled',
+                'last_login_at',
+                'last_login_ip',
+                'last_password_changed_at'
+            ]);
         });
     }
 };

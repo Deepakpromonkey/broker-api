@@ -6,6 +6,7 @@ use App\Models\Shipment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Storage;
 
 class ShipmentService
 {
@@ -124,4 +125,76 @@ class ShipmentService
             '-'.
             str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
     }
+
+
+   /**
+     * Add Stops to an existing Shipment
+     */
+   public function addStops(Shipment $shipment, array $stopsData, \Illuminate\Http\Request $request)
+    {
+        return DB::transaction(function () use ($shipment, $stopsData, $request) {
+            
+            $shipment->stops()->delete();
+
+            foreach ($stopsData as $index => $stop) {
+                
+                $processedEvents = [];
+                if (isset($stop['custom_events']) && is_array($stop['custom_events'])) {
+                    foreach ($stop['custom_events'] as $event) {
+                        
+                        $eventData = [
+                            'customEventName' => $event['customEventName'] ?? 'Event',
+                            'type' => $event['type'] ?? 'text',
+                            'value' => $event['value'] ?? null,
+                        ];
+
+                        if ($eventData['type'] === 'file' && !empty($event['file_key'])) {
+                            $fileKey = $event['file_key'];
+                            
+                            if ($request->hasFile($fileKey)) {
+                                $file = $request->file($fileKey);
+                                $path = $file->store('shipments/' . $shipment->uuid . '/events', 's3');
+                                $eventData['value'] = Storage::disk('s3')->url($path);
+                            }
+                        }
+
+                        $processedEvents[] = $eventData;
+                    }
+                }
+
+             $shipment->stops()->create([
+                    'stop_number' => $index + 1,
+                    'stop_type' => $stop['stop_type'] ?? 'Pickup',
+                    'stop_name' => $stop['stop_name'] ?? null,
+                    
+                    // Location
+                    'address' => $stop['address'] ?? '',
+                    'address_2' => $stop['address_2'] ?? null,
+                    'city' => $stop['city'] ?? null,
+                    'state' => $stop['state'] ?? null,
+                    'zipcode' => $stop['zipcode'] ?? null,
+                    'country' => $stop['country'] ?? null,
+                    
+                    // Timing (Start & End)
+                    'start_date' => $stop['start_date'] ?? null,
+                    'start_time' => $stop['start_time'] ?? null,
+                    'start_timezone' => $stop['start_timezone'] ?? null,
+                    'end_date' => $stop['end_date'] ?? null,
+                    'end_time' => $stop['end_time'] ?? null,
+                    'end_timezone' => $stop['end_timezone'] ?? null,
+                    
+                    // Comms
+                    'comment_to_driver' => $stop['comment_to_driver'] ?? null,
+                    'alert_emails' => $stop['alert_emails'] ?? null,
+                    
+                    // Events
+                    'events' => !empty($processedEvents) ? $processedEvents : null,
+                ]);
+            }
+
+            return $shipment->load('stops');
+        });
+    }
+
+
 }

@@ -22,6 +22,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/users', [UserController::class, 'index']);
         Route::post('/invitations', [InvitationController::class, 'store']);
         Route::post('/shipments', [ShipmentController::class, 'store']);
+        Route::post('/shipments/{uuid}/stops', [ShipmentController::class, 'addStops']);
     });
 
 });
